@@ -37,41 +37,9 @@ int main(void)
         command[commLen - 1] = '0';
         commLen -= 1;
 
-        // get processID to check for "$$'s"
-        pid_t PIDval = getpid();
-        char PIDstr[10] = {0};
-        sprintf(PIDstr, "%d", PIDval);
-        size_t PIDlen = strlen(PIDstr);
-        // parse the entire command and check if there is any instance of "$$". If so, create a new string to hold
-        for (int i = 0; i < commLen; i++)
-        {
-            if (command[i] == '$' && command[i + 1] == '$')
-            {
-                // point command to a new string that has the inserted PID for the $$
-                char *newCommand = calloc(strlen(command) + PIDlen, sizeof(char));
-                int newCommandIndex = 0;
-                for (int j = 0; j < i; j++)
-                {
-                    newCommand[newCommandIndex] = command[j];
-                    newCommandIndex++;
-                }
-                for (int j = 0; j < PIDlen; j++)
-                {
-                    newCommand[newCommandIndex] = PIDstr[j];
-                    newCommandIndex++;
-                }
-                for (int j = i + 2; j < commLen; j++)
-                {
-                    newCommand[newCommandIndex] = command[j];
-                    newCommandIndex++;
-                }
+        // replace instances of $$ with the processID
+        command = insertPID(command, &commLen);
 
-                // free initial command and give it the new command.
-                free(command);
-                command = newCommand;
-                commLen = strlen(command);
-            }
-        }
         write(STDOUT_FILENO, command, commLen);
         free(command);
     }

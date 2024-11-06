@@ -58,6 +58,7 @@ struct commLineInput *parseCommand(char *commandLine)
     // create a new heap string to save into the struct so can free parseString
     char *command = calloc(strlen(token), sizeof(char));
     strcpy(command, token);
+
     parsedCommandLine->command = command;
 
     // parse the rest of parseString

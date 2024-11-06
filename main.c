@@ -29,8 +29,11 @@ int main(void)
         write(STDOUT_FILENO, ": ", 2);
         char *commandLine = NULL;
         size_t bufferSize = 2048;
-        int ret;
-        ret = getline(&commandLine, &bufferSize, stdin);
+        int bytesRead;
+        bytesRead = getline(&commandLine, &bufferSize, stdin);
+
+        if (commandLine[0] == '\n' || commandLine[0] == '#')
+            continue;
 
         // take out '\n' and get commandLine length
         size_t commLen = strlen(commandLine);
@@ -39,6 +42,8 @@ int main(void)
 
         // replace instances of $$ with the processID
         commandLine = insertPID(commandLine, &commLen);
+
+        printf("%s\n", commandLine);
 
         struct commLineInput *parsedCommandLine = parseCommand(commandLine);
 

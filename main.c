@@ -22,26 +22,29 @@ int main(void)
     // open current directory
     DIR *currDir = opendir(".");
 
-    // loop through the command prompt process until user quits the program
+    // loop through the commandLine prompt process until user quits the program
     while (true)
     {
-        // get initial command
+        // get initial commandLine
         write(STDOUT_FILENO, ": ", 2);
-        char *command = NULL;
+        char *commandLine = NULL;
         size_t bufferSize = 2048;
         int ret;
-        ret = getline(&command, &bufferSize, stdin);
+        ret = getline(&commandLine, &bufferSize, stdin);
 
-        // take out '\n' and get command length
-        size_t commLen = strlen(command);
-        command[commLen - 1] = '0';
+        // take out '\n' and get commandLine length
+        size_t commLen = strlen(commandLine);
+        commandLine[commLen - 1] = 0;
         commLen -= 1;
 
         // replace instances of $$ with the processID
-        command = insertPID(command, &commLen);
+        commandLine = insertPID(commandLine, &commLen);
 
-        write(STDOUT_FILENO, command, commLen);
-        free(command);
+        struct commLineInput *parsedCommandLine = parseCommand(commandLine);
+
+        printf("%s\n", parsedCommandLine->command);
+        printf("%d\n", parsedCommandLine->background);
+        free(commandLine);
     }
 
     int closeCurr = closedir(currDir);

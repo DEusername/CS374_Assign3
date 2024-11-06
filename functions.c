@@ -1,41 +1,88 @@
 #include "functions.h"
 
-char *insertPID(char *command, size_t *commLen)
+char *insertPID(char *commandLine, size_t *commLen)
 {
     // get processID to check for "$$'s"
     pid_t PIDval = getpid();
     char PIDstr[10] = {0};
     sprintf(PIDstr, "%d", PIDval);
     size_t PIDlen = strlen(PIDstr);
-    printf("%s\n", PIDstr);
-    // parse the entire command and check if there is any instance of "$$". If so, create a new string to hold
+    // parse the entire commandLine and check if there is any instance of "$$". If so, create a new string to hold
     for (int i = 0; i < *commLen; i++)
     {
-        if (command[i] == '$' && command[i + 1] == '$')
+        if (commandLine[i] == '$' && commandLine[i + 1] == '$')
         {
-            // point command to a new string that has the inserted PID for the $$
-            char *newCommand = calloc(strlen(command) + PIDlen + 1, sizeof(char));
-            int newCommandIndex = 0;
-            // copy over the old command up to the first $
+            // point commandLine to a new string that has the inserted PID for the $$
+            char *newcommandLine = calloc(strlen(commandLine) + PIDlen + 1, sizeof(char));
+            int newcommandLineIndex = 0;
+            // copy over the old commandLine up to the first $
             for (int j = 0; j < i; j++)
-                newCommand[newCommandIndex++] = command[j];
-            // copy the PIDstr into the new command
+                newcommandLine[newcommandLineIndex++] = commandLine[j];
+            // copy the PIDstr into the new commandLine
             for (int j = 0; j < PIDlen; j++)
-                newCommand[newCommandIndex++] = PIDstr[j];
+                newcommandLine[newcommandLineIndex++] = PIDstr[j];
             // skip the $$'s and start copying again from after it.
             for (int j = i + 2; j < *commLen; j++)
-                newCommand[newCommandIndex++] = command[j];
+                newcommandLine[newcommandLineIndex++] = commandLine[j];
 
-            // free initial command and point it to the new command.
-            printf("%s\n", command);
-            printf("%s\n", newCommand);
-            free(command);
-            command = newCommand;
-            printf("%d\n", *commLen);
-            *commLen = strlen(command); // here I should be setting commLen to be equal to the newly created command.
-            // it seems that maybe it isn't???
-            printf("%d\n", *commLen);
+            // free initial commandLine and point it to the new commandLine.
+            free(commandLine);
+            commandLine = newcommandLine;
+            *commLen = strlen(commandLine);
         }
     }
-    return command;
+    return commandLine;
+}
+
+struct commLineInput *parseCommand(char *commandLine)
+{
+    // can use the tokens in main because parse string is on heap, and so can return a commandLineInput struct with all of the items.
+
+    struct commLineInput *parsedCommandLine = malloc(sizeof(struct commLineInput));
+
+    parsedCommandLine->command = NULL;
+    parsedCommandLine->arguments = NULL;
+    parsedCommandLine->inputFile = NULL;
+    parsedCommandLine->outputFile = NULL;
+    parsedCommandLine->background = false;
+
+    // prepare to parse a copy of commandLine
+    char *saveptr;
+    char *token;
+    char *parseString = calloc(strlen(commandLine) + 1, sizeof(char));
+    strcpy(parseString, commandLine);
+
+    // get the initial command to do.
+    token = strtok_r(parseString, " \n", &saveptr);
+    char *command = calloc(strlen(token), sizeof(char));
+    strcpy(command, token);
+    parsedCommandLine->command = command;
+    if (*saveptr == '\n')
+    {
+        // there are no arguments, and the command was the last item.
+        free(parseString);
+        return parsedCommandLine;
+    }
+    else
+    {
+        // then there are arguments, or perhaps there is a < or a > sign or a &
+        while (token = strtok_r(NULL, " \n", &saveptr))
+        {
+            // check if it was &
+            if (strcmp(token, "&") == 0)
+            {
+                parsedCommandLine->background = true;
+                free(parseString);
+                return parsedCommandLine;
+            }
+
+            // check if it started with > for output file
+
+            // will need to have a check if it started with < for input file
+
+            // otherwise, it was an argument.
+        }
+    }
+    free(parseString);
+    return parsedCommandLine;
 }

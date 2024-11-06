@@ -12,11 +12,11 @@
 //  Declares the command line input struct and the variables inside of it
 struct commLineInput
 {
-    char *command;    // a string that is the command
-    char *arguments;  // basically an array of arguments
-    char *inputFile;  // the input file to be used for program input
-    char *outputFile; // the output file to store the output of the ran program
-    bool background;  // a boolean to determine if the process should be run in the background or not.
+    char *command;        // a string that is the command
+    char *arguments[512]; // basically an array of arguments string pointers
+    char *inputFile;      // the input file to be used for program input
+    char *outputFile;     // the output file to store the output of the ran program
+    bool background;      // a boolean to determine if the process should be run in the background or not.
 };
 
 /**

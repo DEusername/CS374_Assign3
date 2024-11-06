@@ -41,7 +41,7 @@ struct commLineInput *parseCommand(char *commandLine)
     struct commLineInput *parsedCommandLine = malloc(sizeof(struct commLineInput));
 
     parsedCommandLine->command = NULL;
-    parsedCommandLine->arguments = NULL;
+    memset(parsedCommandLine->arguments, 0, sizeof(parsedCommandLine->arguments));
     parsedCommandLine->inputFile = NULL;
     parsedCommandLine->outputFile = NULL;
     parsedCommandLine->background = false;
@@ -52,11 +52,15 @@ struct commLineInput *parseCommand(char *commandLine)
     char *parseString = calloc(strlen(commandLine) + 1, sizeof(char));
     strcpy(parseString, commandLine);
 
-    // get the initial command to do.
+    // get the initial command.
     token = strtok_r(parseString, " \n", &saveptr);
+
+    // create a new heap string to save into the struct so can free parseString
     char *command = calloc(strlen(token), sizeof(char));
     strcpy(command, token);
     parsedCommandLine->command = command;
+
+    // parse the rest of parseString
     if (*saveptr == '\n')
     {
         // there are no arguments, and the command was the last item.
@@ -65,11 +69,14 @@ struct commLineInput *parseCommand(char *commandLine)
     }
     else
     {
+        int storedArguments = 0;
         // then there are arguments, or perhaps there is a < or a > sign or a &
         while (token = strtok_r(NULL, " \n", &saveptr))
         {
-            // check if it was &
-            if (strcmp(token, "&") == 0)
+            // check if it was & and the & was the last parameter in the command line input
+            printf("%s\n", token);
+            printf("%c\n", *saveptr);
+            if (strcmp(token, "&") == 0 && *saveptr == 0) // already swapped out the '\n' from it, so end should be a 0
             {
                 parsedCommandLine->background = true;
                 free(parseString);
@@ -77,10 +84,53 @@ struct commLineInput *parseCommand(char *commandLine)
             }
 
             // check if it started with > for output file
+            if (strcmp(token, ">") == 0)
+            {
+                token = strtok_r(NULL, " \n", &saveptr);
 
-            // will need to have a check if it started with < for input file
+                // create a new heap memory item so that can free parseString before returning
+                char *outFile = calloc(strlen(token), sizeof(char));
+                strcpy(outFile, token);
+                parsedCommandLine->outputFile = outFile;
 
-            // otherwise, it was an argument.
+                // return if the delimiter was \n or continue loop if not.
+                if (*saveptr == '\n')
+                {
+                    free(parseString);
+                    return parsedCommandLine;
+                }
+                else
+                    continue;
+            }
+
+            // check if it started with < for input file
+            if (strcmp(token, "<") == 0)
+            {
+                token = strtok_r(NULL, " \n", &saveptr);
+
+                // create a new heap memory item so that can free parseString before returning
+                char *inFile = calloc(strlen(token), sizeof(char));
+                strcpy(inFile, token);
+                parsedCommandLine->inputFile = inFile;
+
+                // return if the delimiter was \n or continue loop if not.
+                if (*saveptr == '\n')
+                {
+                    free(parseString);
+                    return parsedCommandLine;
+                }
+                else
+                    continue;
+            }
+
+            // otherwise, it is an argument
+            // create a new heap memory item so that can free parseString before returning
+            char *argument = calloc(strlen(token), sizeof(char));
+            strcpy(argument, token);
+
+            // append the argument into the struct's array of arguments. It will persit, because all of the struct data exists on
+            //  the heap, so it can go out of scope and be returned.
+            parsedCommandLine->arguments[storedArguments++] = argument;
         }
     }
     free(parseString);

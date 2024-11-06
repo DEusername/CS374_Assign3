@@ -42,9 +42,31 @@ int main(void)
 
         struct commLineInput *parsedCommandLine = parseCommand(commandLine);
 
-        printf("%s\n", parsedCommandLine->command);
-        printf("%d\n", parsedCommandLine->background);
+        // printf("%s\n", parsedCommandLine->command);
+        // for (int i = 0; i < 512; i++)
+        // {
+        //     if (parsedCommandLine->arguments[i] != 0)
+        //         printf("%s\n", parsedCommandLine->arguments[i]);
+        // }
+        // if (parsedCommandLine->inputFile != NULL)
+        //     printf("%s\n", parsedCommandLine->inputFile);
+        // if (parsedCommandLine->outputFile != NULL)
+        //     printf("%s\n", parsedCommandLine->outputFile);
+        // printf("%d\n", parsedCommandLine->background);
+
+        // freeing the commandLine the user input
         free(commandLine);
+
+        // freeing all of the parsedCommandLine fields
+        free(parsedCommandLine->command);
+        for (int i = 0; i < 512; i++)
+            free(parsedCommandLine->arguments[i]);
+        if (parsedCommandLine->inputFile != NULL)
+            free(parsedCommandLine->inputFile);
+        if (parsedCommandLine->outputFile != NULL)
+            free(parsedCommandLine->outputFile);
+        // don't need to free the background bool because it is just stored data in the parsedCommandLine struct on the heap
+        free(parsedCommandLine);
     }
 
     int closeCurr = closedir(currDir);

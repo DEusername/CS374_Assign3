@@ -208,6 +208,38 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
         break;
     case 0: // if child, exec using the parsedCommandData
     {
+        // check if need to open input file and make stdin point to that input file
+        int inFD;
+        if (parsedCommandData->inputFile != NULL)
+        {
+            inFD = open(parsedCommandData->inputFile, O_RDONLY, 0777);
+            if (inFD < 0)
+            {
+                printf("Failed to open the input file\n");
+                exit(1);
+            }
+
+            int dupRet = dup2(inFD, STDIN_FILENO);
+            if (dupRet < 0)
+                printf("failed to duplicate the fd into STDIN\n");
+        }
+
+        // check if need to open output file and make stdout point to that output file
+        int outFD;
+        if (parsedCommandData->outputFile != NULL)
+        {
+            outFD = open(parsedCommandData->outputFile, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+            if (outFD < 0)
+            {
+                printf("Failed to open the output file\n");
+                exit(1);
+            }
+
+            int dupRet = dup2(outFD, STDOUT_FILENO);
+            if (dupRet < 0)
+                printf("failed to duplicate the fd into STDOUT\n");
+        }
+
         // load up an argv to give to the execution
         char *passArgV[argNum + 2];
         passArgV[0] = parsedCommandData->command;

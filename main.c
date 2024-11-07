@@ -19,8 +19,9 @@
  */
 int main(void)
 {
-    // open current directory
-    DIR *currDir = opendir(".");
+    // create variable to house the exist status from the last ran program in this shell
+    int exitStatus = 0;
+    bool ranProgram = false;
 
     // loop through the commandLine prompt process until user quits the program
     while (true)
@@ -35,17 +36,32 @@ int main(void)
         if (commandLine[0] == '\n' || commandLine[0] == '#')
             continue;
 
-        // take out '\n' and get commandLine length
+        // get commandLine length
         size_t commLen = strlen(commandLine);
-        commandLine[commLen - 1] = 0;
-        commLen -= 1;
 
         // replace instances of $$ with the processID
         commandLine = insertPID(commandLine, &commLen);
 
-        printf("%s\n", commandLine);
-
         struct commLineInput *parsedCommandLine = parseCommand(commandLine);
+
+        // freeing the commandLine that the user input
+        free(commandLine);
+
+        bool ranBuiltCommand = false;
+        builtInCommands(parsedCommandLine, exitStatus, ranProgram, &ranBuiltCommand);
+        if (ranBuiltCommand)
+            continue;
+
+        // get the number of arguments in the parsedCommandLine struct
+        int argNum = 0;
+        for (int i = 0; i < 512; i++)
+        {
+            if (parsedCommandLine->arguments[i] != 0)
+                argNum++;
+        }
+
+        execCommand(parsedCommandLine, &exitStatus, argNum);
+        printf("MADE IT THROUGH THE execCommand FUNCTION SUCCESSFULLY\n");
 
         // printf("%s\n", parsedCommandLine->command);
         // for (int i = 0; i < 512; i++)
@@ -59,9 +75,6 @@ int main(void)
         //     printf("%s\n", parsedCommandLine->outputFile);
         // printf("%d\n", parsedCommandLine->background);
 
-        // freeing the commandLine the user input
-        free(commandLine);
-
         // freeing all of the parsedCommandLine fields
         free(parsedCommandLine->command);
         for (int i = 0; i < 512; i++)
@@ -73,8 +86,6 @@ int main(void)
         // don't need to free the background bool because it is just stored data in the parsedCommandLine struct on the heap
         free(parsedCommandLine);
     }
-
-    int closeCurr = closedir(currDir);
 
     return EXIT_SUCCESS;
 }

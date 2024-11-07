@@ -75,10 +75,9 @@ struct commLineInput *parseCommand(char *commandLine)
         while (token = strtok_r(NULL, " \n", &saveptr))
         {
             // check if it was & and the & was the last parameter in the command line input
-            printf("%s\n", token);
-            printf("%c\n", *saveptr);
             if (strcmp(token, "&") == 0 && *saveptr == 0) // already swapped out the '\n' from it, so end should be a 0
             {
+                printf("%s", token);
                 parsedCommandLine->background = true;
                 free(parseString);
                 return parsedCommandLine;
@@ -136,4 +135,98 @@ struct commLineInput *parseCommand(char *commandLine)
     }
     free(parseString);
     return parsedCommandLine;
+}
+
+void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bool ranProgram, bool *ranBuiltCommand)
+{
+    // exit functionality
+    if (strcmp(parsedCommandData->command, "exit") == 0)
+    {
+        *ranBuiltCommand = true;
+        // TODO: terminate any running programs
+
+        // terminate self
+        // freeing all of the parsedCommandData fields and the parsedCommandData item itself
+        free(parsedCommandData->command);
+        for (int i = 0; i < 512; i++)
+            free(parsedCommandData->arguments[i]);
+        if (parsedCommandData->inputFile != NULL)
+            free(parsedCommandData->inputFile);
+        if (parsedCommandData->outputFile != NULL)
+            free(parsedCommandData->outputFile);
+        // don't need to free the background bool because it is just stored data in the parsedCommandData struct on the heap
+        free(parsedCommandData);
+
+        exit(EXIT_SUCCESS);
+    }
+
+    // cd functionality
+    if (strcmp(parsedCommandData->command, "cd") == 0)
+    {
+        *ranBuiltCommand = true;
+        char *path;
+        if (parsedCommandData->arguments[0] != 0) // if an argument was passed with command
+            path = parsedCommandData->arguments[0];
+        else // if no argument was passed, get the home directory absolute path
+        {
+            path = getenv("HOME");
+            if (!path)
+                printf("FAILED TO GET HOME PATH\n");
+        }
+        // printf("PATH STRING: %s\n", path);
+        int ret = chdir(path); // works with both absolute and relative paths.
+        if (ret)
+            printf("FAILED dir change\n");
+        // char currDir[100];
+        // char *currDirPtr = currDir;
+        // char *cwdPtr = getcwd(currDirPtr, 100);
+        // printf("CURRENT WORKING DIRECTORY: %s\n", cwdPtr);
+    }
+
+    // status functionality
+    if (strcmp(parsedCommandData->command, "status") == 0)
+    {
+        *ranBuiltCommand = true;
+        if (!ranProgram)
+            printf("exit value %d\n", 0);
+        else
+            printf("exit value %d\n", exitStatus);
+    }
+
+    return;
+}
+
+void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int argNum)
+{
+    // fork process
+    pid_t childPID = fork();
+    int statusCode;
+    switch (childPID)
+    {
+    case -1: // error
+        printf("ERROR IN FORKING PROCESS\n");
+        break;
+    case 0: // if child, exec using the parsedCommandData
+    {
+        // load up an argv to give to the execution
+        char *passArgV[argNum + 2];
+        passArgV[0] = parsedCommandData->command;
+        for (int i = 0; i < argNum; i++)
+            passArgV[i + 1] = parsedCommandData->arguments[i];
+        passArgV[argNum + 1] = NULL;
+        int ret = execvp(parsedCommandData->command, passArgV);
+        if (ret)
+        {
+            printf("Error: your command was not found in the PATH\n");
+            exit(1);
+        }
+    }
+    break;
+    default: // if parent, wait for the child to finish before returning.
+        waitpid(childPID, &statusCode, 0);
+        if (WIFEXITED(statusCode)) // enter if exited normally
+            *exitStatus = WEXITSTATUS(statusCode);
+        break;
+    }
+    return;
 }

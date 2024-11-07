@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <signal.h>
 
 #include <dirent.h>
 #include <sys/types.h>
@@ -19,9 +20,12 @@
  */
 int main(void)
 {
+    // create signal mechanics for dealing with completed background child processes
+
     // create variable to house the exist status from the last ran program in this shell
     int exitStatus = 0;
     bool ranProgram = false;
+    int backProcesses = 0;
 
     // loop through the commandLine prompt process until user quits the program
     while (true)
@@ -60,8 +64,9 @@ int main(void)
                 argNum++;
         }
 
+        // printf("BEFORE execCommand FUNCTION\n");
         execCommand(parsedCommandLine, &exitStatus, argNum);
-        printf("MADE IT THROUGH THE execCommand FUNCTION SUCCESSFULLY\n");
+        // printf("MADE IT THROUGH THE execCommand FUNCTION SUCCESSFULLY\n");
 
         // printf("%s\n", parsedCommandLine->command);
         // for (int i = 0; i < 512; i++)
@@ -74,6 +79,17 @@ int main(void)
         // if (parsedCommandLine->outputFile != NULL)
         //     printf("%s\n", parsedCommandLine->outputFile);
         // printf("%d\n", parsedCommandLine->background);
+
+        // check for any completed background processes, and then print them
+        int bpExitStatus;
+        int bpPID;
+        while (bpPID = waitpid(-1, &bpExitStatus, WNOHANG))
+        {
+            // printf("bpPID = ... %d\n", bpPID);
+            if (bpPID == -1)
+                break;
+            printf("Background process %d is done: exit value %d\n", bpPID, bpExitStatus);
+        }
 
         // freeing all of the parsedCommandLine fields
         free(parsedCommandLine->command);

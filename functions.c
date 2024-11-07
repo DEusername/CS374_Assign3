@@ -77,7 +77,6 @@ struct commLineInput *parseCommand(char *commandLine)
             // check if it was & and the & was the last parameter in the command line input
             if (strcmp(token, "&") == 0 && *saveptr == 0) // already swapped out the '\n' from it, so end should be a 0
             {
-                printf("%s", token);
                 parsedCommandLine->background = true;
                 free(parseString);
                 return parsedCommandLine;
@@ -200,6 +199,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
 {
     // fork process
     pid_t childPID = fork();
+
     int statusCode;
     switch (childPID)
     {
@@ -223,6 +223,23 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             if (dupRet < 0)
                 printf("failed to duplicate the fd into STDIN\n");
         }
+        else
+        {
+            // deal with scenario where background is true and input file in not given
+            if (parsedCommandData->background == true)
+            {
+                inFD = open("/dev/null", O_WRONLY | O_CREAT | O_TRUNC, 0777);
+                if (inFD < 0)
+                {
+                    printf("Failed to open the output file\n");
+                    exit(1);
+                }
+
+                int dupRet = dup2(inFD, STDOUT_FILENO);
+                if (dupRet < 0)
+                    printf("failed to duplicate the fd into STDOUT\n");
+            }
+        }
 
         // check if need to open output file and make stdout point to that output file
         int outFD;
@@ -238,6 +255,23 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             int dupRet = dup2(outFD, STDOUT_FILENO);
             if (dupRet < 0)
                 printf("failed to duplicate the fd into STDOUT\n");
+        }
+        else
+        {
+            // deal with scenario where background is true and output file in not given
+            if (parsedCommandData->background == true)
+            {
+                outFD = open("/dev/null", O_WRONLY | O_CREAT | O_TRUNC, 0777);
+                if (outFD < 0)
+                {
+                    printf("Failed to open the output file\n");
+                    exit(1);
+                }
+
+                int dupRet = dup2(outFD, STDOUT_FILENO);
+                if (dupRet < 0)
+                    printf("failed to duplicate the fd into STDOUT\n");
+            }
         }
 
         // load up an argv to give to the execution
@@ -255,9 +289,23 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
     }
     break;
     default: // if parent, wait for the child to finish before returning.
-        waitpid(childPID, &statusCode, 0);
-        if (WIFEXITED(statusCode)) // enter if exited normally
-            *exitStatus = WEXITSTATUS(statusCode);
+        if (parsedCommandData->background == true)
+        {
+            // create the formatted string for writing to console
+            char childPIDstr[50] = {0};
+            char *childPIDstrPtr = childPIDstr;
+            sprintf(childPIDstr, "The background process' PID is %d\n", childPID);
+            write(1, childPIDstrPtr, 50);
+            waitpid(childPID, &statusCode, WNOHANG);
+        }
+
+        else
+        {
+            waitpid(childPID, &statusCode, 0);
+            if (WIFEXITED(statusCode)) // enter if exited normally
+                *exitStatus = WEXITSTATUS(statusCode);
+        }
+
         break;
     }
     return;

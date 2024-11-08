@@ -318,7 +318,12 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
         }
         else // wait for child to exit
         {
-            waitpid(childPID, &statusCode, 0);
+            while (waitpid(childPID, &statusCode, 0) == -1) // deal with the child process sending kill -SIGTSTP to parent
+            {
+                printf("\n");
+                continue;
+            }
+
             if (WIFEXITED(statusCode)) // enter if exited normally
                 *exitStatus = WEXITSTATUS(statusCode);
             else // enter if exited via signal.

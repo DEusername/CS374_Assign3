@@ -56,7 +56,7 @@ struct commLineInput *parseCommand(char *commandLine)
     token = strtok_r(parseString, " \n", &saveptr);
 
     // create a new heap string to save into the struct so can free parseString
-    char *command = calloc(strlen(token), sizeof(char));
+    char *command = calloc(strlen(token) + 1, sizeof(char));
     strcpy(command, token);
 
     parsedCommandLine->command = command;
@@ -88,7 +88,7 @@ struct commLineInput *parseCommand(char *commandLine)
                 token = strtok_r(NULL, " \n", &saveptr);
 
                 // create a new heap memory item so that can free parseString before returning
-                char *outFile = calloc(strlen(token), sizeof(char));
+                char *outFile = calloc(strlen(token) + 1, sizeof(char));
                 strcpy(outFile, token);
                 parsedCommandLine->outputFile = outFile;
 
@@ -108,7 +108,7 @@ struct commLineInput *parseCommand(char *commandLine)
                 token = strtok_r(NULL, " \n", &saveptr);
 
                 // create a new heap memory item so that can free parseString before returning
-                char *inFile = calloc(strlen(token), sizeof(char));
+                char *inFile = calloc(strlen(token) + 1, sizeof(char));
                 strcpy(inFile, token);
                 parsedCommandLine->inputFile = inFile;
 
@@ -124,7 +124,7 @@ struct commLineInput *parseCommand(char *commandLine)
 
             // otherwise, it is an argument
             // create a new heap memory item so that can free parseString before returning
-            char *argument = calloc(strlen(token), sizeof(char));
+            char *argument = calloc(strlen(token) + 1, sizeof(char));
             strcpy(argument, token);
 
             // append the argument into the struct's array of arguments. It will persit, because all of the struct data exists on
@@ -142,7 +142,10 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
     if (strcmp(parsedCommandData->command, "exit") == 0)
     {
         *ranBuiltCommand = true;
-        // TODO: terminate any running programs
+        // terminate any running child processes
+        int killRet = kill(0, SIGTERM);
+        if (!killRet)
+            printf("There was an error with killing all child processes\n");
 
         // terminate self
         // freeing all of the parsedCommandData fields and the parsedCommandData item itself

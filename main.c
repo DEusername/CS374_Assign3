@@ -79,7 +79,20 @@ int main(void)
         bool ranBuiltCommand = false;
         builtInCommands(parsedCommandLine, exitStatus, ranProgram, &ranBuiltCommand, sigTerminated);
         if (ranBuiltCommand)
+        {
+            // freeing all of the parsedCommandLine fields
+            free(parsedCommandLine->command);
+            for (int i = 0; i < 512; i++)
+                free(parsedCommandLine->arguments[i]);
+            if (parsedCommandLine->inputFile != NULL)
+                free(parsedCommandLine->inputFile);
+            if (parsedCommandLine->outputFile != NULL)
+                free(parsedCommandLine->outputFile);
+            // don't need to free the background bool because it is just stored data in the parsedCommandLine struct on the heap
+            free(parsedCommandLine);
+
             continue;
+        }
 
         // get the number of arguments in the parsedCommandLine struct
         int argNum = 0;

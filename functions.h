@@ -45,7 +45,7 @@ struct commLineInput *parseCommand(char *commandLine);
  * @param ranProgram a boolean that communicates if a non-built in command has been executed.
  * @param ranBuiltProgram a reference boolean to store and return whether a program was ran or not
  */
-void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bool ranProgram, bool *ranBuiltCommand);
+void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bool ranProgram, bool *ranBuiltCommand, bool sigTerminated);
 
 /**
  * @brief execute the command help within the passed commLineInput, and attach any arguments to it
@@ -53,4 +53,4 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
  * @param
  * @param
  */
-void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int argNum);
+void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int argNum, bool *sigTerminated);

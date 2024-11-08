@@ -12,6 +12,15 @@
 
 #include "functions.h"
 
+void handle_SIGTSTP(int signo)
+{
+    // printf("Shell process ID: %d\n", getpid());
+    // char *message = "Caught SIGTSTP, sleeping for 10 seconds\n";
+    // // We are using write rather than printf
+    // write(STDOUT_FILENO, message, 39);
+    // sleep(10);
+}
+
 /**
  * @brief continuously requests user to input values 1-3 for different ways of getting a csv movie file to process. Then makes
  *      new directory and makes a new text file in the directory for every year a movie's come out in, and then loads that file
@@ -20,12 +29,23 @@
  */
 int main(void)
 {
-    // create signal mechanics for dealing with completed background child processes
+    // Initialize SIGINT_action struct to ignore all sig int signals.
+    struct sigaction SIGINT_action = {0};
+    SIGINT_action.sa_handler = SIG_IGN;
+    sigfillset(&SIGINT_action.sa_mask);
+    sigaction(SIGINT, &SIGINT_action, NULL); // make the created sigaction SIGINT handler the active handler for SIGINT signal
+
+    // Initialize SIGSTOP_action struct to handle route to the handle_SIGSTOP function, and block all signals if it is working.
+    struct sigaction SIGTSTP_action = {0};
+    SIGTSTP_action.sa_handler = handle_SIGTSTP;
+    SIGTSTP_action.sa_flags = SA_RESTART;
+    sigfillset(&SIGTSTP_action.sa_mask);
+    sigaction(SIGTSTP, &SIGTSTP_action, NULL); // make the created sigaction SIGSTOP handler the active handler for SIGSTOP signal
 
     // create variable to house the exist status from the last ran program in this shell
     int exitStatus = 0;
+    bool sigTerminated = false;
     bool ranProgram = false;
-    int backProcesses = 0;
 
     // loop through the commandLine prompt process until user quits the program
     while (true)
@@ -34,8 +54,13 @@ int main(void)
         write(STDOUT_FILENO, ": ", 2);
         char *commandLine = NULL;
         size_t bufferSize = 2048;
-        int bytesRead;
-        bytesRead = getline(&commandLine, &bufferSize, stdin);
+        int bytesRead = getline(&commandLine, &bufferSize, stdin);
+        if (bytesRead == -1)
+        {
+            clearerr(stdin);
+            printf("\n");
+            continue;
+        }
 
         if (commandLine[0] == '\n' || commandLine[0] == '#')
             continue;
@@ -52,7 +77,7 @@ int main(void)
         free(commandLine);
 
         bool ranBuiltCommand = false;
-        builtInCommands(parsedCommandLine, exitStatus, ranProgram, &ranBuiltCommand);
+        builtInCommands(parsedCommandLine, exitStatus, ranProgram, &ranBuiltCommand, sigTerminated);
         if (ranBuiltCommand)
             continue;
 
@@ -65,7 +90,9 @@ int main(void)
         }
 
         // printf("BEFORE execCommand FUNCTION\n");
-        execCommand(parsedCommandLine, &exitStatus, argNum);
+        sigTerminated = false;
+        execCommand(parsedCommandLine, &exitStatus, argNum, &sigTerminated);
+        ranProgram = true;
         // printf("MADE IT THROUGH THE execCommand FUNCTION SUCCESSFULLY\n");
 
         // printf("%s\n", parsedCommandLine->command);

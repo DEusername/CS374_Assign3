@@ -136,7 +136,7 @@ struct commLineInput *parseCommand(char *commandLine)
     return parsedCommandLine;
 }
 
-void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bool ranProgram, bool *ranBuiltCommand)
+void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bool ranProgram, bool *ranBuiltCommand, bool sigTerminated)
 {
     // exit functionality
     if (strcmp(parsedCommandData->command, "exit") == 0)
@@ -153,8 +153,7 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
             free(parsedCommandData->inputFile);
         if (parsedCommandData->outputFile != NULL)
             free(parsedCommandData->outputFile);
-        // don't need to free the background bool because it is just stored data in the parsedCommandData struct on the heap
-        free(parsedCommandData);
+        free(parsedCommandData); // don't need to free the background bool because it is in parsedCommandData struct on the heap
 
         exit(EXIT_SUCCESS);
     }
@@ -189,13 +188,18 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
         if (!ranProgram)
             printf("exit value %d\n", 0);
         else
-            printf("exit value %d\n", exitStatus);
+        {
+            if (sigTerminated)
+                printf("Terminated by signal %d\n", exitStatus);
+            else
+                printf("exit value %d\n", exitStatus);
+        }
     }
 
     return;
 }
 
-void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int argNum)
+void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int argNum, bool *sigTerminated)
 {
     // fork process
     pid_t childPID = fork();
@@ -208,6 +212,20 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
         break;
     case 0: // if child, exec using the parsedCommandData
     {
+        struct sigaction SIGTSTP_action = {0};
+        SIGTSTP_action.sa_handler = SIG_IGN;
+        sigfillset(&SIGTSTP_action.sa_mask);
+        sigaction(SIGTSTP, &SIGTSTP_action, NULL);
+
+        // reset the SIG INT handler to the default if not a background process
+        if (parsedCommandData->background == false)
+        {
+            struct sigaction SIGINT_action = {0};
+            SIGINT_action.sa_handler = SIG_DFL;
+            sigfillset(&SIGINT_action.sa_mask);
+            sigaction(SIGINT, &SIGINT_action, NULL);
+        }
+
         // check if need to open input file and make stdin point to that input file
         int inFD;
         if (parsedCommandData->inputFile != NULL)
@@ -276,11 +294,11 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
 
         // load up an argv to give to the execution
         char *passArgV[argNum + 2];
-        passArgV[0] = parsedCommandData->command;
+        passArgV[0] = parsedCommandData->command; // load the local copy so that can free parsedCommandData->command
         for (int i = 0; i < argNum; i++)
             passArgV[i + 1] = parsedCommandData->arguments[i];
         passArgV[argNum + 1] = NULL;
-        int ret = execvp(parsedCommandData->command, passArgV);
+        int ret = execvp(passArgV[0], passArgV);
         if (ret)
         {
             printf("Error: your command was not found in the PATH\n");
@@ -298,12 +316,17 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             write(1, childPIDstrPtr, 50);
             waitpid(childPID, &statusCode, WNOHANG);
         }
-
         else
         {
             waitpid(childPID, &statusCode, 0);
             if (WIFEXITED(statusCode)) // enter if exited normally
                 *exitStatus = WEXITSTATUS(statusCode);
+            else // enter if exited via signal.
+            {
+                *exitStatus = WTERMSIG(statusCode);
+                printf("Terminated by signal %d\n", *exitStatus);
+                *sigTerminated = true;
+            }
         }
 
         break;

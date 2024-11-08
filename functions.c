@@ -227,7 +227,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             inFD = open(parsedCommandData->inputFile, O_RDONLY, 0777);
             if (inFD < 0)
             {
-                printf("Failed to open the input file\n");
+                printf("Failed to open %s for input\n", parsedCommandData->inputFile);
                 exit(1);
             }
 
@@ -263,7 +263,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             outFD = open(parsedCommandData->outputFile, O_WRONLY | O_CREAT | O_TRUNC, 0777);
             if (outFD < 0)
             {
-                printf("Failed to open the output file\n");
+                printf("Failed to open %s for output\n", parsedCommandData->outputFile);
                 exit(1);
             }
 
@@ -301,7 +301,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
         int ret = execvp(passArgV[0], passArgV);
         if (ret)
         {
-            printf("Error: your command was not found in the PATH\n");
+            printf("%s: no such file or directory\n", passArgV[0]);
             exit(1);
         }
     }

@@ -61,6 +61,26 @@ int main(void)
     // loop through the commandLine prompt process until user quits the program
     while (true)
     {
+        // check for any completed background processes, and then print them
+        int bpExitStatus;
+        int bpStatusCode;
+        int bpPID;
+        while (bpPID = waitpid(-1, &bpStatusCode, WNOHANG))
+        {
+            if (bpPID == -1)
+                break;
+            if (WIFEXITED(bpStatusCode)) // enter if exited normally
+            {
+                bpExitStatus = WEXITSTATUS(bpStatusCode); // interperet the status code to get the exit status
+                printf("Background process %d is done: exit value %d\n", bpPID, bpExitStatus);
+            }
+            else // enter if exited via signal.
+            {
+                bpExitStatus = WTERMSIG(bpStatusCode);
+                printf("Background process %d is done: Terminated by signal %d\n", bpPID, bpExitStatus);
+            }
+        }
+
         // get initial commandLine
         write(STDOUT_FILENO, ": ", 2);
         char *commandLine = NULL;
@@ -117,18 +137,6 @@ int main(void)
         sigTerminated = false;
         execCommand(parsedCommandLine, &exitStatus, argNum, &sigTerminated);
         ranProgram = true;
-
-        // check for any completed background processes, and then print them
-        int bpExitStatus;
-        int bpStatusCode;
-        int bpPID;
-        while (bpPID = waitpid(-1, &bpStatusCode, WNOHANG))
-        {
-            if (bpPID == -1)
-                break;
-            bpExitStatus = WEXITSTATUS(bpStatusCode); // interperet the status code to get the exit status
-            printf("Background process %d is done: exit value %d\n", bpPID, bpExitStatus);
-        }
 
         // freeing all of the parsedCommandLine fields
         free(parsedCommandLine->command);

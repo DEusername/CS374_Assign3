@@ -1,5 +1,7 @@
 #include "functions.h"
 
+// function documentation is in the functions.h header file
+
 char *insertPID(char *commandLine, size_t *commLen)
 {
     // get processID to check for "$$'s"
@@ -77,7 +79,10 @@ struct commLineInput *parseCommand(char *commandLine)
             // check if it was & and the & was the last parameter in the command line input
             if (strcmp(token, "&") == 0 && *saveptr == 0) // already swapped out the '\n' from it, so end should be a 0
             {
-                parsedCommandLine->background = true;
+                char *foregroundName = "FOREMODE";
+                char *foregroundMode = getenv(foregroundName);
+                if (strcmp(foregroundMode, "0") == 0)
+                    parsedCommandLine->background = true;
                 free(parseString);
                 return parsedCommandLine;
             }

@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <signal.h>
+#include <termios.h>
 
 #include <dirent.h>
 #include <sys/types.h>
@@ -14,6 +15,20 @@
 
 void handle_SIGTSTP(int signo)
 {
+    char *foregroundName = "FOREMODE";
+    char *foregroundMode = getenv(foregroundName);
+
+    if (strcmp(foregroundMode, "0") == 0)
+    {
+        write(1, "\nEntering Foreground-only mode (& is now ignored)", 50);
+        setenv(foregroundName, "1", 1);
+    }
+    else
+    {
+        write(1, "\nExiting Foreground-only mode", 25);
+        setenv(foregroundName, "0", 1);
+    }
+
     // printf("Shell process ID: %d\n", getpid());
     // char *message = "Caught SIGTSTP, sleeping for 10 seconds\n";
     // // We are using write rather than printf
@@ -29,6 +44,9 @@ void handle_SIGTSTP(int signo)
  */
 int main(void)
 {
+    char *foregroundName = "FOREMODE";
+    setenv(foregroundName, "0", 1);
+
     // Initialize SIGINT_action struct to ignore all sig int signals.
     struct sigaction SIGINT_action = {0};
     SIGINT_action.sa_handler = SIG_IGN;
@@ -38,7 +56,6 @@ int main(void)
     // Initialize SIGSTOP_action struct to handle route to the handle_SIGSTOP function, and block all signals if it is working.
     struct sigaction SIGTSTP_action = {0};
     SIGTSTP_action.sa_handler = handle_SIGTSTP;
-    SIGTSTP_action.sa_flags = SA_RESTART;
     sigfillset(&SIGTSTP_action.sa_mask);
     sigaction(SIGTSTP, &SIGTSTP_action, NULL); // make the created sigaction SIGSTOP handler the active handler for SIGSTOP signal
 
@@ -141,6 +158,9 @@ int main(void)
             free(parsedCommandLine->outputFile);
         // don't need to free the background bool because it is just stored data in the parsedCommandLine struct on the heap
         free(parsedCommandLine);
+
+        // clear the standard input buffer, in case user wrote things while shell was waiting for a foreground process
+        tcflush(STDIN_FILENO, TCIFLUSH);
     }
 
     return EXIT_SUCCESS;

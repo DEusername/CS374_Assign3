@@ -25,7 +25,7 @@ void handle_SIGTSTP(int signo)
     }
     else
     {
-        write(1, "\nExiting Foreground-only mode", 25);
+        write(1, "\nExiting Foreground-only mode", 50);
         setenv(foregroundName, "0", 1);
     }
 }

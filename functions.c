@@ -9,12 +9,12 @@ char *insertPID(char *commandLine, size_t *commLen)
     char PIDstr[10] = {0};
     sprintf(PIDstr, "%d", PIDval);
     size_t PIDlen = strlen(PIDstr);
-    // parse the entire commandLine and check if there is any instance of "$$". If so, create a new string to hold
+    // parse the entire commandLine and check if there is any instance of "$$".
     for (int i = 0; i < *commLen; i++)
     {
         if (commandLine[i] == '$' && commandLine[i + 1] == '$')
         {
-            // point commandLine to a new string that has the inserted PID for the $$
+            // create a new command line to hold the new commandLine information with the PID inserted
             char *newcommandLine = calloc(strlen(commandLine) + PIDlen + 1, sizeof(char));
             int newcommandLineIndex = 0;
             // copy over the old commandLine up to the first $
@@ -38,8 +38,7 @@ char *insertPID(char *commandLine, size_t *commLen)
 
 struct commLineInput *parseCommand(char *commandLine)
 {
-    // can use the tokens in main because parse string is on heap, and so can return a commandLineInput struct with all of the items.
-
+    // create initial struct to hold the fields of the input command line information
     struct commLineInput *parsedCommandLine = malloc(sizeof(struct commLineInput));
 
     parsedCommandLine->command = NULL;
@@ -58,84 +57,75 @@ struct commLineInput *parseCommand(char *commandLine)
     token = strtok_r(parseString, " \n", &saveptr);
 
     // create a new heap string to save into the struct so can free parseString
+    //      *do this because tokens are all just pointers to parts of parseString
     char *command = calloc(strlen(token) + 1, sizeof(char));
     strcpy(command, token);
 
     parsedCommandLine->command = command;
 
     // parse the rest of parseString
-    if (*saveptr == '\n')
+    int storedArguments = 0;
+    while (token = strtok_r(NULL, " \n", &saveptr))
     {
-        // there are no arguments, and the command was the last item.
-        free(parseString);
-        return parsedCommandLine;
-    }
-    else
-    {
-        int storedArguments = 0;
-        // then there are arguments, or perhaps there is a < or a > sign or a &
-        while (token = strtok_r(NULL, " \n", &saveptr))
+        // check if it was & and the & was the last parameter in the command line input
+        if (strcmp(token, "&") == 0 && *saveptr == 0) // bc saveptr points just after delimiter position, it should be 0 if it's at end
         {
-            // check if it was & and the & was the last parameter in the command line input
-            if (strcmp(token, "&") == 0 && *saveptr == 0) // already swapped out the '\n' from it, so end should be a 0
+            char *foregroundName = "FOREMODE";
+            char *foregroundMode = getenv(foregroundName);
+            if (strcmp(foregroundMode, "0") == 0)
+                parsedCommandLine->background = true;
+            free(parseString);
+            return parsedCommandLine;
+        }
+
+        // check if it started with > for output file
+        if (strcmp(token, ">") == 0)
+        {
+            token = strtok_r(NULL, " \n", &saveptr);
+
+            // create a new heap memory item so that can free parseString before returning
+            char *outFile = calloc(strlen(token) + 1, sizeof(char));
+            strcpy(outFile, token);
+            parsedCommandLine->outputFile = outFile;
+
+            // return if the delimiter was \n or continue loop if not.
+            if (*saveptr == 0)
             {
-                char *foregroundName = "FOREMODE";
-                char *foregroundMode = getenv(foregroundName);
-                if (strcmp(foregroundMode, "0") == 0)
-                    parsedCommandLine->background = true;
                 free(parseString);
                 return parsedCommandLine;
             }
-
-            // check if it started with > for output file
-            if (strcmp(token, ">") == 0)
-            {
-                token = strtok_r(NULL, " \n", &saveptr);
-
-                // create a new heap memory item so that can free parseString before returning
-                char *outFile = calloc(strlen(token) + 1, sizeof(char));
-                strcpy(outFile, token);
-                parsedCommandLine->outputFile = outFile;
-
-                // return if the delimiter was \n or continue loop if not.
-                if (*saveptr == '\n')
-                {
-                    free(parseString);
-                    return parsedCommandLine;
-                }
-                else
-                    continue;
-            }
-
-            // check if it started with < for input file
-            if (strcmp(token, "<") == 0)
-            {
-                token = strtok_r(NULL, " \n", &saveptr);
-
-                // create a new heap memory item so that can free parseString before returning
-                char *inFile = calloc(strlen(token) + 1, sizeof(char));
-                strcpy(inFile, token);
-                parsedCommandLine->inputFile = inFile;
-
-                // return if the delimiter was \n or continue loop if not.
-                if (*saveptr == '\n')
-                {
-                    free(parseString);
-                    return parsedCommandLine;
-                }
-                else
-                    continue;
-            }
-
-            // otherwise, it is an argument
-            // create a new heap memory item so that can free parseString before returning
-            char *argument = calloc(strlen(token) + 1, sizeof(char));
-            strcpy(argument, token);
-
-            // append the argument into the struct's array of arguments. It will persit, because all of the struct data exists on
-            //  the heap, so it can go out of scope and be returned.
-            parsedCommandLine->arguments[storedArguments++] = argument;
+            else
+                continue;
         }
+
+        // check if it started with < for input file
+        if (strcmp(token, "<") == 0)
+        {
+            token = strtok_r(NULL, " \n", &saveptr);
+
+            // create a new heap memory item so that can free parseString before returning
+            char *inFile = calloc(strlen(token) + 1, sizeof(char));
+            strcpy(inFile, token);
+            parsedCommandLine->inputFile = inFile;
+
+            // return if the delimiter was \n or continue loop if not.
+            if (*saveptr == 0)
+            {
+                free(parseString);
+                return parsedCommandLine;
+            }
+            else
+                continue;
+        }
+
+        // otherwise, it is an argument
+        // create a new heap memory item so that can free parseString before returning
+        char *argument = calloc(strlen(token) + 1, sizeof(char));
+        strcpy(argument, token);
+
+        // append the argument into the struct's array of arguments. It will persit, because all of the struct data exists on
+        //  the heap, so it can go out of scope and be returned.
+        parsedCommandLine->arguments[storedArguments++] = argument;
     }
     free(parseString);
     return parsedCommandLine;
@@ -147,7 +137,7 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
     if (strcmp(parsedCommandData->command, "exit") == 0)
     {
         *ranBuiltCommand = true;
-        // terminate any running child processes
+        // terminate any running child processes in the same process family as the parent process
         int killRet = kill(0, SIGTERM);
         if (!killRet)
             printf("There was an error with killing all child processes\n");
@@ -171,7 +161,7 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
     {
         *ranBuiltCommand = true;
         char *path;
-        if (parsedCommandData->arguments[0] != 0) // if an argument was passed with command
+        if (parsedCommandData->arguments[0] != 0) // if an argument was passed with command set path to first argument
             path = parsedCommandData->arguments[0];
         else // if no argument was passed, get the home directory absolute path
         {
@@ -179,23 +169,18 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
             if (!path)
                 printf("FAILED TO GET HOME PATH\n");
         }
-        // printf("PATH STRING: %s\n", path);
         int ret = chdir(path); // works with both absolute and relative paths.
         if (ret)
             printf("FAILED dir change\n");
-        // char currDir[100];
-        // char *currDirPtr = currDir;
-        // char *cwdPtr = getcwd(currDirPtr, 100);
-        // printf("CURRENT WORKING DIRECTORY: %s\n", cwdPtr);
     }
 
     // status functionality
     if (strcmp(parsedCommandData->command, "status") == 0)
     {
         *ranBuiltCommand = true;
-        if (!ranProgram)
+        if (!ranProgram) // enter if have not ran a process before
             printf("exit value %d\n", 0);
-        else
+        else // if have ran a process, then print either the termination message or the exit message
         {
             if (sigTerminated)
                 printf("Terminated by signal %d\n", exitStatus);
@@ -203,7 +188,6 @@ void builtInCommands(struct commLineInput *parsedCommandData, int exitStatus, bo
                 printf("exit value %d\n", exitStatus);
         }
     }
-
     return;
 }
 
@@ -220,6 +204,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
         break;
     case 0: // if child, exec using the parsedCommandData
     {
+        // set up a new sigtstp action to ignore sigtstp. Because it is SIG_IGN, it carries over to the exec() call later
         struct sigaction SIGTSTP_action = {0};
         SIGTSTP_action.sa_handler = SIG_IGN;
         sigfillset(&SIGTSTP_action.sa_mask);
@@ -234,10 +219,11 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             sigaction(SIGINT, &SIGINT_action, NULL);
         }
 
-        // check if need to open input file and make stdin point to that input file
+        // check if need to open input file
         int inFD;
         if (parsedCommandData->inputFile != NULL)
         {
+            // open input file
             inFD = open(parsedCommandData->inputFile, O_RDONLY, 0777);
             if (inFD < 0)
             {
@@ -245,32 +231,35 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
                 exit(1);
             }
 
+            // make stdin point to that input file
             int dupRet = dup2(inFD, STDIN_FILENO);
             if (dupRet < 0)
                 printf("failed to duplicate the fd into STDIN\n");
         }
-        else
+        else // deal with scenario where background is true and input file in not given
         {
-            // deal with scenario where background is true and input file in not given
             if (parsedCommandData->background == true)
             {
-                inFD = open("/dev/null", O_WRONLY | O_CREAT | O_TRUNC, 0777);
+                // make the input open /dev/null
+                inFD = open("/dev/null", O_RDONLY, 0777);
                 if (inFD < 0)
                 {
                     printf("Failed to open the output file\n");
                     exit(1);
                 }
 
+                // make stdin take input from /dev/null
                 int dupRet = dup2(inFD, STDOUT_FILENO);
                 if (dupRet < 0)
                     printf("failed to duplicate the fd into STDOUT\n");
             }
         }
 
-        // check if need to open output file and make stdout point to that output file
+        // check if need to open output file
         int outFD;
         if (parsedCommandData->outputFile != NULL)
         {
+            // open output file
             outFD = open(parsedCommandData->outputFile, O_WRONLY | O_CREAT | O_TRUNC, 0777);
             if (outFD < 0)
             {
@@ -278,6 +267,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
                 exit(1);
             }
 
+            // make stdout point to that output file
             int dupRet = dup2(outFD, STDOUT_FILENO);
             if (dupRet < 0)
                 printf("failed to duplicate the fd into STDOUT\n");
@@ -287,6 +277,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             // deal with scenario where background is true and output file in not given
             if (parsedCommandData->background == true)
             {
+                // make the output use /dev/null
                 outFD = open("/dev/null", O_WRONLY | O_CREAT | O_TRUNC, 0777);
                 if (outFD < 0)
                 {
@@ -294,6 +285,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
                     exit(1);
                 }
 
+                // make stdout output to /dev/null
                 int dupRet = dup2(outFD, STDOUT_FILENO);
                 if (dupRet < 0)
                     printf("failed to duplicate the fd into STDOUT\n");
@@ -302,7 +294,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
 
         // load up an argv to give to the execution
         char *passArgV[argNum + 2];
-        passArgV[0] = parsedCommandData->command; // load the local copy so that can free parsedCommandData->command
+        passArgV[0] = parsedCommandData->command;
         for (int i = 0; i < argNum; i++)
             passArgV[i + 1] = parsedCommandData->arguments[i];
         passArgV[argNum + 1] = NULL;
@@ -314,7 +306,7 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
         }
     }
     break;
-    default: // if parent, wait for the child to finish before returning.
+    default: // if parent, deal with child existence
         if (parsedCommandData->background == true)
         {
             // create the formatted string for writing to console
@@ -322,9 +314,9 @@ void execCommand(struct commLineInput *parsedCommandData, int *exitStatus, int a
             char *childPIDstrPtr = childPIDstr;
             sprintf(childPIDstr, "The background process' PID is %d\n", childPID);
             write(1, childPIDstrPtr, 50);
-            waitpid(childPID, &statusCode, WNOHANG);
+            waitpid(childPID, &statusCode, WNOHANG); // move on from waiting for the child
         }
-        else
+        else // wait for child to exit
         {
             waitpid(childPID, &statusCode, 0);
             if (WIFEXITED(statusCode)) // enter if exited normally

@@ -28,12 +28,6 @@ void handle_SIGTSTP(int signo)
         write(1, "\nExiting Foreground-only mode", 25);
         setenv(foregroundName, "0", 1);
     }
-
-    // printf("Shell process ID: %d\n", getpid());
-    // char *message = "Caught SIGTSTP, sleeping for 10 seconds\n";
-    // // We are using write rather than printf
-    // write(STDOUT_FILENO, message, 39);
-    // sleep(10);
 }
 
 /**
@@ -72,13 +66,14 @@ int main(void)
         char *commandLine = NULL;
         size_t bufferSize = 2048;
         int bytesRead = getline(&commandLine, &bufferSize, stdin);
-        if (bytesRead == -1)
+        if (bytesRead == -1) // deal with a sigtstp signal by resetting the loop after handling signal
         {
             clearerr(stdin);
             printf("\n");
             continue;
         }
 
+        // deal with comments / empty lines
         if (commandLine[0] == '\n' || commandLine[0] == '#')
             continue;
 
@@ -88,11 +83,11 @@ int main(void)
         // replace instances of $$ with the processID
         commandLine = insertPID(commandLine, &commLen);
 
+        // generate a processed commLineInput struct to store the command line data fields
         struct commLineInput *parsedCommandLine = parseCommand(commandLine);
-
-        // freeing the commandLine that the user input
         free(commandLine);
 
+        // check to see if need to run any built in commands.
         bool ranBuiltCommand = false;
         builtInCommands(parsedCommandLine, exitStatus, ranProgram, &ranBuiltCommand, sigTerminated);
         if (ranBuiltCommand)
@@ -107,7 +102,6 @@ int main(void)
                 free(parsedCommandLine->outputFile);
             // don't need to free the background bool because it is just stored data in the parsedCommandLine struct on the heap
             free(parsedCommandLine);
-
             continue;
         }
 
@@ -119,32 +113,20 @@ int main(void)
                 argNum++;
         }
 
-        // printf("BEFORE execCommand FUNCTION\n");
+        // run any other command using exec() from a child process
         sigTerminated = false;
         execCommand(parsedCommandLine, &exitStatus, argNum, &sigTerminated);
         ranProgram = true;
-        // printf("MADE IT THROUGH THE execCommand FUNCTION SUCCESSFULLY\n");
-
-        // printf("%s\n", parsedCommandLine->command);
-        // for (int i = 0; i < 512; i++)
-        // {
-        //     if (parsedCommandLine->arguments[i] != 0)
-        //         printf("%s\n", parsedCommandLine->arguments[i]);
-        // }
-        // if (parsedCommandLine->inputFile != NULL)
-        //     printf("%s\n", parsedCommandLine->inputFile);
-        // if (parsedCommandLine->outputFile != NULL)
-        //     printf("%s\n", parsedCommandLine->outputFile);
-        // printf("%d\n", parsedCommandLine->background);
 
         // check for any completed background processes, and then print them
         int bpExitStatus;
+        int bpStatusCode;
         int bpPID;
-        while (bpPID = waitpid(-1, &bpExitStatus, WNOHANG))
+        while (bpPID = waitpid(-1, &bpStatusCode, WNOHANG))
         {
-            // printf("bpPID = ... %d\n", bpPID);
             if (bpPID == -1)
                 break;
+            bpExitStatus = WEXITSTATUS(bpStatusCode); // interperet the status code to get the exit status
             printf("Background process %d is done: exit value %d\n", bpPID, bpExitStatus);
         }
 

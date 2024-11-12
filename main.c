@@ -13,17 +13,18 @@
 
 #include "functions.h"
 
+// SIGTSTP handler
 void handle_SIGTSTP(int signo)
 {
     char *foregroundName = "FOREMODE";
     char *foregroundMode = getenv(foregroundName);
 
-    if (strcmp(foregroundMode, "0") == 0)
+    if (strcmp(foregroundMode, "0") == 0) // enter if foreground mode is off
     {
         write(1, "\nEntering Foreground-only mode (& is now ignored)", 50);
         setenv(foregroundName, "1", 1);
     }
-    else
+    else // enter if foreground mode is on
     {
         write(1, "\nExiting Foreground-only mode", 50);
         setenv(foregroundName, "0", 1);
@@ -31,9 +32,8 @@ void handle_SIGTSTP(int signo)
 }
 
 /**
- * @brief continuously requests user to input values 1-3 for different ways of getting a csv movie file to process. Then makes
- *      new directory and makes a new text file in the directory for every year a movie's come out in, and then loads that file
- *      with the titles of every movie that came out in that year.
+ * @brief continuously displays a prompt to the user for a command to execute. It then takes the user input command and either runs
+ *          one of the built in commands, or executes it directly using an exec() function call.
  * @return 0 on success, or non-0 on a failure
  */
 int main(void)

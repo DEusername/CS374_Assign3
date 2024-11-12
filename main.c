@@ -16,19 +16,31 @@
 // SIGTSTP handler
 void handle_SIGTSTP(int signo)
 {
+    // basically need to check if the signal came while getting user input (I.E. while getline was still getting input), or if it
+    //      came after getline had finished and had moved the terminal cursor one line down
+    char *inputName = "GETINPUT";
+    char *inputMode = getenv(inputName);
+    if (strcmp(inputMode, "1") == 0)
+        write(1, "\n", 1);
+
+    // determine if foreground mode was already activated or not
     char *foregroundName = "FOREMODE";
     char *foregroundMode = getenv(foregroundName);
 
     if (strcmp(foregroundMode, "0") == 0) // enter if foreground mode is off
     {
-        write(1, "\nEntering Foreground-only mode (& is now ignored)", 50);
+        write(1, "Entering Foreground-only mode (& is now ignored)", 48);
         setenv(foregroundName, "1", 1);
     }
     else // enter if foreground mode is on
     {
-        write(1, "\nExiting Foreground-only mode", 50);
+        write(1, "Exiting Foreground-only mode", 28);
         setenv(foregroundName, "0", 1);
     }
+
+    // write a trailing \n
+    if (strcmp(inputMode, "1") == 0)
+        write(1, "\n", 1);
 }
 
 /**
@@ -81,6 +93,10 @@ int main(void)
             }
         }
 
+        // set up env var for if the SIGTSTP signal comes when getting user input
+        char *inputName = "GETINPUT";
+        setenv(inputName, "1", 1);
+
         // get initial commandLine
         write(STDOUT_FILENO, ": ", 2);
         char *commandLine = NULL;
@@ -89,9 +105,10 @@ int main(void)
         if (bytesRead == -1) // deal with a sigtstp signal by resetting the loop after handling signal
         {
             clearerr(stdin);
-            printf("\n");
             continue;
         }
+        // set the GETINPUT var to be 0 since getline has finished and has moved terminal output onto the next line
+        setenv(inputName, "0", 1);
 
         // deal with comments / empty lines
         if (commandLine[0] == '\n' || commandLine[0] == '#')

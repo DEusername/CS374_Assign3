@@ -25,6 +25,10 @@ Provides an overview of what the program does when ran, as well as an overview o
 
 Contains the instructions for compiling and running this program using gcc
 
+### LICENCE.md
+
+MIT licence declaring how people may use this code.
+
 ### functions.h Entails
 
 A header file for all of the functions implemented in functions.c. This file contains all of the function prototypes, as well as the function documentation. Also contains the command line struct which holds user input into the shell.

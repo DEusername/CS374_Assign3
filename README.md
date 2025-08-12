@@ -2,7 +2,7 @@
 
 **Description**
 
-In the C language, create a small shell program.
+A small, limited shell program created in the C language as a class project.
 
 This program does the following
 
@@ -15,10 +15,28 @@ This program does the following
 7. Support running commands in foreground and background processes
 8. Implement custom handlers for 2 signals, SIGINT and SIGTSTP
 
-### Additionally
+## File Information
 
-use this command when trying to copy the repository to the server to test compilation: 
+### README.md
 
-scp -r . eversond@os1.engr.oregonstate.edu:/nfs/stak/users/eversond/CS374/assign3_work
+Provides an overview of what the program does when ran, as well as an overview of what each file does.
 
-make sure this command is made from either within the directory, or one level above it to copy the items recursively into the server.
+### COMPILATION.md
+
+Contains the instructions for compiling this program using gcc
+
+### functions.h Entails
+
+A header file for all of the functions implemented in functions.c. This file contains all of the function prototypes, as well as the function documentation. Also contains the command line struct which holds user input into the shell.
+
+### functions.c Entails:
+
+The code for all of the functions used to complete the above 8 tasks, used in both the main file and in related functions (still inside of functions.c file).
+
+### main.c Entails:
+
+This file contains all of the main function code to complete al of the 8 program objectives above. This file contains the signal handling code, while the main function revolves around implementing while loops to continuously get commands from the user.
+
+### p3testscript
+
+The file contains a bash script to output the results of attempting to complete the above 8 objectives for the program. 

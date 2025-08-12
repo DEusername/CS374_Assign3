@@ -1,6 +1,6 @@
 # CS374_Assign3
 
-**Description**
+## Description
 
 A small, limited shell program created in the C language as a class project.
 
@@ -21,9 +21,9 @@ This program does the following
 
 Provides an overview of what the program does when ran, as well as an overview of what each file does.
 
-### COMPILATION.md
+### USER.md
 
-Contains the instructions for compiling this program using gcc
+Contains the instructions for compiling and running this program using gcc
 
 ### functions.h Entails
 
